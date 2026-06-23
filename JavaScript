@@ -1,0 +1,98 @@
+const screen = document.getElementById('screen');
+const buttons = document.querySelectorAll('.btn');
+
+// Keep track of the current expression
+let currentExpression = '';
+
+// Update the display screen
+function updateDisplay(value) {
+    // Replace standard JS operators with visual symbols for the user
+    let displayStr = value.replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
+    screen.value = displayStr || '0';
+}
+
+// Evaluate the mathematical expression
+function calculate() {
+    try {
+        // Prevent empty evaluation
+        if (!currentExpression) return; 
+        
+        // Evaluate safely using Function instead of eval() to parse the string
+        // Replace visual symbols back to JS operators if they somehow got in
+        let safeExpression = currentExpression.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+        
+        // Calculate result
+        let result = new Function('return ' + safeExpression)();
+        
+        // Handle floating point precision issues (e.g. 0.1 + 0.2)
+        result = Math.round(result * 100000000) / 100000000;
+        
+        currentExpression = result.toString();
+        updateDisplay(currentExpression);
+    } catch (error) {
+        screen.value = 'Error';
+        currentExpression = '';
+    }
+}
+
+// Handle generic input (numbers and operators)
+function appendInput(value) {
+    // Prevent multiple decimals in one number segment
+    if (value === '.' && currentExpression.includes('.') && !/[+\-*/]/.test(currentExpression)) {
+        return; 
+    }
+    currentExpression += value;
+    updateDisplay(currentExpression);
+}
+
+// Handle deleting the last character
+function deleteLast() {
+    currentExpression = currentExpression.toString().slice(0, -1);
+    updateDisplay(currentExpression);
+}
+
+// Handle clearing the screen
+function clearScreen() {
+    currentExpression = '';
+    updateDisplay('');
+}
+
+// Event Listeners for On-Screen Buttons
+buttons.forEach(button => {
+    button.addEventListener('click', () => {
+        const value = button.getAttribute('data-value');
+        const action = button.getAttribute('data-action');
+
+        if (action === 'clear') {
+            clearScreen();
+        } else if (action === 'delete') {
+            deleteLast();
+        } else if (action === 'calculate') {
+            calculate();
+        } else if (value) {
+            appendInput(value);
+        }
+    });
+});
+
+// Event Listener for Physical Keyboard Support
+document.addEventListener('keydown', (event) => {
+    const key = event.key;
+
+    // Allowed keys array
+    const validKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '*', '/', '.', '%'];
+
+    if (validKeys.includes(key)) {
+        event.preventDefault();
+        appendInput(key);
+    } else if (key === 'Enter' || key === '=') {
+        event.preventDefault();
+        calculate();
+    } else if (key === 'Backspace') {
+        event.preventDefault();
+        deleteLast();
+    } else if (key === 'Escape' || key === 'Delete') {
+        event.preventDefault();
+        clearScreen();
+    }
+});
